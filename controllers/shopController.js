@@ -166,38 +166,26 @@ class ShopController {
 
   // ดูร้านค้าทั้งหมด
   async getAllShops(req, res) {
-    try {
-      const result = await pool.query(`
-        SELECT 
-          s. shop_id,
-          s. shop_name,
-          s.shop_logo,
-          s.description,
-          s.rating_score,
-          s.created_at,
-          u.user_id,
-          u.full_name,
-          u.email
-        FROM Shops s
-        JOIN Users u ON s.user_id = u.user_id
-        ORDER BY s.created_at DESC
-      `);
-
-      res.json({
-        success: true,
-        message: 'ดึงข้อมูลร้านค้าทั้งหมดสำเร็จ',
-        data: result.rows,
-        total: result.rows.length,
-      });
-    } catch (error) {
-      console.error('❌ Get All Shops Error:', error);
-      res.status(500).json({
-        success: false,
-        message:  'เกิดข้อผิดพลาด',
-        error: error.message,
-      });
-    }
+  try {
+    const result = await pool.query(`
+      SELECT * FROM public.shops ORDER BY shop_id ASC;
+    `);
+    
+    res.json({
+      success: true,
+      message: 'ดึงข้อมูลร้านค้าทั้งหมดสำเร็จ',
+      data: result.rows,
+      total: result.rows.length,
+    });
+  } catch (error) {
+    console.error('❌ Get All Shops Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'เกิดข้อผิดพลาด',
+      error: error.message,
+    });
   }
+}
 
   // ดูร้านค้าตาม ID
   async getShopById(req, res) {
