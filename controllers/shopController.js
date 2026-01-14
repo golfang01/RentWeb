@@ -90,6 +90,80 @@ class ShopController {
     }
   }
 
+  // เพิ่มฟังก์ชันนี้ใน class ShopController
+
+  // แก้ไขข้อมูลร้าน
+  async updateMyShop(req, res) {
+    try {
+      const user_id = req.user.user_id;
+      const { shop_name, description, shop_logo } = req.body;
+
+      // Check if user has shop
+      const checkShop = await pool.query(
+        'SELECT shop_id FROM Shops WHERE user_id = $1',
+        [user_id]
+      );
+
+      if (checkShop.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'ไม่พบร้านค้าของคุณ',
+        });
+      }
+
+      // Build dynamic update
+      const fields = [];
+      const values = [];
+      let paramIndex = 1;
+
+      if (shop_name !== undefined) {
+        fields.push(`shop_name = $${paramIndex}`);
+        values.push(shop_name);
+        paramIndex++;
+      }
+      if (description !== undefined) {
+        fields.push(`description = $${paramIndex}`);
+        values.push(description);
+        paramIndex++;
+      }
+      if (shop_logo !== undefined) {
+        fields.push(`shop_logo = $${paramIndex}`);
+        values.push(shop_logo);
+        paramIndex++;
+      }
+
+      if (fields.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'ไม่มีข้อมูลที่จะแก้ไข',
+        });
+      }
+
+      values. push(user_id);
+      const query = `
+        UPDATE Shops
+        SET ${fields.join(', ')}
+        WHERE user_id = $${paramIndex}
+        RETURNING *
+      `;
+
+      const result = await pool.query(query, values);
+
+      res.json({
+        success: true,
+        message: 'แก้ไขข้อมูลร้านสำเร็จ',
+        data: result.rows[0],
+      });
+    } catch (error) {
+      console.error('❌ Update Shop Error:', error);
+      res.status(500).json({
+        success: false,
+        message:  'เกิดข้อผิดพลาด',
+        error: error.message,
+      });
+    }
+  }
+
   // ดูร้านค้าทั้งหมด
   async getAllShops(req, res) {
     try {

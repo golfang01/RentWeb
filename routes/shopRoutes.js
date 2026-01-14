@@ -9,10 +9,13 @@ router.post('/', authenticateToken, shopController.createShop);
 // ดู shop ของตัวเอง (ต้อง login)
 router.get('/me', authenticateToken, shopController.getMyShop);
 
-// ดู shop ทั้งหมด
+// แก้ไขข้อมูล ร้าน(ต้อง login)
+router.put('/me', authenticateToken, shopController.updateMyShop);
+
+// ดู shop ทั้งหมด(ไม่ต้อง login)
 router.get('/', shopController.getAllShops);
 
-// ดู shop ตาม ID
+// ดู shop ตาม ID(ไม่ต้อง login)
 router.get('/:id', shopController.getShopById);
 
 module.exports = router;   
