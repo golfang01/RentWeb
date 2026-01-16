@@ -21,7 +21,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Health check
-app.get('/health', (req, res) => {
+app. get('/health', (req, res) => {
   res.json({
     success: true,
     message: 'Rentio API is running 🚀',
@@ -29,10 +29,12 @@ app.get('/health', (req, res) => {
   });
 });
 
-//  Routes API
+// Routes API
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/categories', require('./routes/categoryRoutes'));  
 
+//  สำคัญ: Route ต้องเรียงจาก Specific → Dynamic
 app.use('/api/shops/products', require('./routes/productRoutes'));      
 app.use('/api/shops/bookings', require('./routes/bookingRoutes'));      
 app.use('/api/shops', require('./routes/shopRoutes'));
@@ -63,7 +65,7 @@ const startServer = async () => {
       console.log('=================================');
       console.log(`🚀 Server กำลังทำงานที่ port ${PORT}`);
       console.log(`📍 http://localhost:${PORT}`);
-      console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔧 Environment: ${process. env.NODE_ENV || 'development'}`);
       console.log('=================================');
     });
   } catch (error) {

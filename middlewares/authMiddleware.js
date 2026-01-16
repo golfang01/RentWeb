@@ -1,44 +1,44 @@
 const jwt = require('jsonwebtoken');
-const { sendError } = require('../utils/responseHelper');
-require('dotenv').config({ path: './DB. env' });
 
-/**
- * Middleware to verify JWT token
- */
 const authenticateToken = (req, res, next) => {
+  console.log('=====================================');
+  console.log('🔐 [authenticateToken] เริ่มตรวจสอบ Token');
+  
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  console.log('🔐 [authenticateToken] Authorization Header:', authHeader ?  'มี' : 'ไม่มี');
+  
+  const token = authHeader && authHeader. split(' ')[1]; // Bearer TOKEN
+  console.log('🔐 [authenticateToken] Token:', token ?  '✅ มี Token' : '❌ ไม่มี Token');
 
   if (!token) {
-    return sendError(res, 'กรุณาเข้าสู่ระบบ', 401);
+    console.log('❌ [authenticateToken] ไม่มี Token');
+    console.log('=====================================');
+    return res.status(401).json({
+      success: false,
+      message: 'กรุณา Login ก่อน',
+    });
   }
 
-  try {
-    const decoded = jwt. verify(token, process.env. JWT_SECRET);
-    
-    req.user = {
-      id: decoded.user_id,
-      email: decoded. email,
-      role: decoded. role,
-    };
-    
-    next();
-  } catch (error) {
-    if (error.name === 'TokenExpiredError') {
-      return sendError(res, 'Token หมดอายุ กรุณาเข้าสู่ระบบใหม่', 401);
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+      console.log('❌ [authenticateToken] Token ไม่ถูกต้อง:', err.message);
+      console.log('=====================================');
+      return res.status(403).json({
+        success: false,
+        message: 'Token ไม่ถูกต้องหรือหมดอายุ',
+      });
     }
-    return sendError(res, 'Token ไม่ถูกต้อง', 403);
-  }
+
+    console.log('✅ [authenticateToken] Token ถูกต้อง');
+    console.log('🔐 [authenticateToken] Decoded payload:', user);  // ⭐ ดูว่า decode ได้อะไร
+    
+    // ⭐ ส่งต่อทั้งหมดโดยไม่แก้ไข
+    req.user = user;
+    
+    console.log('✅ [authenticateToken] req.user ถูกตั้งค่าเรียบร้อย:', req.user);
+    console.log('=====================================');
+    next();
+  });
 };
 
-/**
- * Middleware to check if user is admin
- */
-const requireAdmin = (req, res, next) => {
-  if (req.user.role !== 'admin') {
-    return sendError(res, 'ต้องมีสิทธิ์ Admin เท่านั้น', 403);
-  }
-  next();
-};
-
-module.exports = { authenticateToken, requireAdmin };
+module.exports = { authenticateToken };

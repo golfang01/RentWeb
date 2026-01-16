@@ -22,7 +22,21 @@ class User {
    * Find user by email
    */
   static async findByEmail(email) {
-    const query = 'SELECT * FROM Users WHERE email = $1';
+    // ⭐ เปลี่ยนจาก SELECT * เป็นระบุคอลัมน์
+    const query = `
+      SELECT 
+        user_id,
+        email,
+        password_hash,
+        full_name,
+        phone_number,
+        profile_image,
+        role,
+        kyc_status,
+        created_at
+      FROM Users 
+      WHERE email = $1
+    `;
     const result = await pool.query(query, [email]);
     return result.rows[0];
   }
@@ -36,6 +50,7 @@ class User {
         u. user_id,
         u. email,
         u.full_name,
+        u.phone_number,
         u.profile_image,
         u.role,
         u.kyc_status,
@@ -44,10 +59,10 @@ class User {
         s.shop_name,
         s.wallet_balance
       FROM Users u
-      LEFT JOIN Shops s ON u.user_id = s.user_id
+      LEFT JOIN Shops s ON u. user_id = s.user_id
       WHERE u.user_id = $1
     `;
-    const result = await pool.query(query, [userId]);
+    const result = await pool. query(query, [userId]);
     return result.rows[0];
   }
 
@@ -59,7 +74,7 @@ class User {
     const values = [];
     let paramIndex = 1;
 
-    const allowedFields = ['full_name', 'profile_image'];
+    const allowedFields = ['full_name', 'phone_number', 'profile_image'];
     
     Object.entries(userData).forEach(([key, value]) => {
       if (allowedFields.includes(key) && value !== undefined) {
@@ -78,7 +93,7 @@ class User {
       UPDATE Users 
       SET ${fields.join(', ')}
       WHERE user_id = $${paramIndex}
-      RETURNING user_id, email, full_name, profile_image, role, kyc_status
+      RETURNING user_id, email, full_name, phone_number, profile_image, role, kyc_status
     `;
 
     const result = await pool.query(query, values);
