@@ -8,7 +8,7 @@ class BookingController {
       console.log('📋 [getShopBookings] เริ่มดึงการจอง');
       console.log('📋 [getShopBookings] req.user:', req.user);
 
-      const user_id = req.user?. user_id || req.user?.id;
+      const user_id = req.user?.user_id || req.user?.id;
       console.log('📋 [getShopBookings] user_id:', user_id);
 
       if (!user_id) {
@@ -41,9 +41,9 @@ class BookingController {
       // ดึงการจองทั้งหมด
       const result = await pool.query(`
         SELECT 
-          b. booking_id,
-          b. product_id,
-          b. renter_id,
+          b.booking_id,
+          b.product_id,
+          b.renter_id,
           b.shop_id,
           b.start_date,
           b.end_date,
@@ -57,12 +57,12 @@ class BookingController {
           u.email as renter_email
         FROM Bookings b
         LEFT JOIN Products p ON b.product_id = p.product_id
-        LEFT JOIN Users u ON b. renter_id = u.user_id
+        LEFT JOIN Users u ON b.renter_id = u.user_id
         WHERE b.shop_id = $1
         ORDER BY b.created_at DESC
       `, [shop_id]);
 
-      console.log('📋 [getShopBookings] พบการจอง:', result.rows. length);
+      console.log('📋 [getShopBookings] พบการจอง:', result.rows.length);
       console.log('=====================================');
 
       res.json({
@@ -76,7 +76,7 @@ class BookingController {
       console.log('=====================================');
       res.status(500).json({
         success: false,
-        message:  'เกิดข้อผิดพลาด',
+        message: 'เกิดข้อผิดพลาด',
         error: error.message,
       });
     }
@@ -94,9 +94,9 @@ class BookingController {
 
       const result = await pool.query(`
         SELECT 
-          b. booking_id,
-          b. product_id,
-          b. renter_id,
+          b.booking_id,
+          b.product_id,
+          b.renter_id,
           b.shop_id,
           b.start_date,
           b.end_date,
@@ -111,7 +111,7 @@ class BookingController {
         LEFT JOIN Products p ON b.product_id = p.product_id
         LEFT JOIN Shops s ON b.shop_id = s.shop_id
         WHERE b.renter_id = $1
-        ORDER BY b. created_at DESC
+        ORDER BY b.created_at DESC
       `, [user_id]);
 
       console.log('📋 [getUserBookings] พบการจอง:', result.rows.length);
@@ -121,7 +121,7 @@ class BookingController {
         success: true,
         message: 'ดึงข้อมูลการจองสำเร็จ',
         data: result.rows,
-        total: result.rows. length,
+        total: result.rows.length,
       });
     } catch (error) {
       console.error('❌ [getUserBookings] Error:', error);
@@ -141,7 +141,7 @@ class BookingController {
       console.log('📋 [getBookingById] เริ่มดึงการจอง');
 
       const { id } = req.params;
-      const user_id = req.user?. user_id || req.user?. id;
+      const user_id = req.user?.user_id || req.user?.id;
 
       console.log('📋 [getBookingById] booking_id:', id);
       console.log('📋 [getBookingById] user_id:', user_id);
@@ -151,12 +151,12 @@ class BookingController {
           b.booking_id,
           b.product_id,
           b.renter_id,
-          b. shop_id,
-          b. start_date,
-          b. end_date,
-          b. total_price,
-          b. deposit_held,
-          b. status,
+          b.shop_id,
+          b.start_date,
+          b.end_date,
+          b.total_price,
+          b.deposit_held,
+          b.status,
           b.created_at,
           p.product_name,
           p.daily_rate,
@@ -165,7 +165,7 @@ class BookingController {
           u.email as renter_email
         FROM Bookings b
         LEFT JOIN Products p ON b.product_id = p.product_id
-        LEFT JOIN Shops s ON b.shop_id = s. shop_id
+        LEFT JOIN Shops s ON b.shop_id = s.shop_id
         LEFT JOIN Users u ON b.renter_id = u.user_id
         WHERE b.booking_id = $1 AND b.renter_id = $2
       `, [id, user_id]);
@@ -184,7 +184,7 @@ class BookingController {
 
       res.json({
         success: true,
-        message:  'ดึงข้อมูลการจองสำเร็จ',
+        message: 'ดึงข้อมูลการจองสำเร็จ',
         data: result.rows[0],
       });
     } catch (error) {
@@ -193,7 +193,7 @@ class BookingController {
       res.status(500).json({
         success: false,
         message: 'เกิดข้อผิดพลาด',
-        error: error. message,
+        error: error.message,
       });
     }
   }
@@ -201,12 +201,12 @@ class BookingController {
   // สร้างการจอง
   async createBooking(req, res) {
     try {
-      console. log('=====================================');
+      console.log('=====================================');
       console.log('📋 [createBooking] เริ่มสร้างการจอง');
-      console.log('📋 [createBooking] req. body:', req.body);
+      console.log('📋 [createBooking] req.body:', req.body);
       console.log('📋 [createBooking] req.user:', req.user);
 
-      const user_id = req.user?. user_id || req.user?. id;
+      const user_id = req.user?.user_id || req.user?.id;
       const { product_id, start_date, end_date } = req.body;
 
       // Validation
@@ -226,7 +226,7 @@ class BookingController {
       `, [product_id]);
 
       if (productResult.rows.length === 0) {
-        return res. status(404).json({
+        return res.status(404).json({
           success: false,
           message: 'ไม่พบสินค้า',
         });
@@ -288,9 +288,9 @@ class BookingController {
     try {
       console.log('=====================================');
       console.log('✅ [approveBooking] เริ่มอนุมัติการจอง');
-      
+
       const { id } = req.params;
-      const shop_id = req.shop?. shop_id;
+      const shop_id = req.shop?.shop_id;
 
       console.log('✅ [approveBooking] booking_id:', id);
       console.log('✅ [approveBooking] shop_id:', shop_id);
@@ -324,7 +324,7 @@ class BookingController {
       console.log('=====================================');
       res.status(500).json({
         success: false,
-        message:  'เกิดข้อผิดพลาด',
+        message: 'เกิดข้อผิดพลาด',
         error: error.message,
       });
     }
@@ -333,9 +333,9 @@ class BookingController {
   // ปฏิเสธการจอง
   async rejectBooking(req, res) {
     try {
-      console. log('=====================================');
+      console.log('=====================================');
       console.log('❌ [rejectBooking] เริ่มปฏิเสธการจอง');
-      
+
       const { id } = req.params;
       const shop_id = req.shop?.shop_id;
 
@@ -363,7 +363,7 @@ class BookingController {
 
       res.json({
         success: true,
-        message:  'ปฏิเสธการจองสำเร็จ',
+        message: 'ปฏิเสธการจองสำเร็จ',
         data: result.rows[0],
       });
     } catch (error) {
@@ -377,12 +377,12 @@ class BookingController {
     }
   }
 
-    // ยกเลิกการจอง (User)
+  // ยกเลิกการจอง (User)
   async cancelBooking(req, res) {
     try {
       console.log('=====================================');
       console.log('🚫 [cancelBooking] เริ่มยกเลิกการจอง');
-      
+
       const { id } = req.params;
       const user_id = req.user?.user_id || req.user?.id;
 
@@ -418,7 +418,7 @@ class BookingController {
       console.log('=====================================');
       res.status(500).json({
         success: false,
-        message: 'เกิดข้อผิดพ��าด',
+        message: 'เกิดข้อผิดพลาด',
         error: error.message,
       });
     }
@@ -429,11 +429,11 @@ class BookingController {
     try {
       console.log('=====================================');
       console.log('📦 [markAsPickedUp] เริ่มอัพเดตสถานะ');
-      
-      const { id } = req.params;
-      const shop_id = req.shop?. shop_id;
 
-      console. log('📦 [markAsPickedUp] booking_id:', id);
+      const { id } = req.params;
+      const shop_id = req.shop?.shop_id;
+
+      console.log('📦 [markAsPickedUp] booking_id:', id);
       console.log('📦 [markAsPickedUp] shop_id:', shop_id);
 
       const result = await pool.query(`
@@ -457,7 +457,7 @@ class BookingController {
 
       res.json({
         success: true,
-        message:  'อัพเดตสถานะ "รับของแล้ว" สำเร็จ',
+        message: 'อัพเดตสถานะ "รับของแล้ว" สำเร็จ',
         data: result.rows[0],
       });
     } catch (error) {
@@ -476,7 +476,7 @@ class BookingController {
     try {
       console.log('=====================================');
       console.log('🔙 [markAsReturned] เริ่มอัพเดตสถานะ');
-      
+
       const { id } = req.params;
       const shop_id = req.shop?.shop_id;
 
@@ -505,14 +505,14 @@ class BookingController {
       res.json({
         success: true,
         message: 'อัพเดตสถานะ "คืนของแล้ว" สำเร็จ',
-        data: result. rows[0],
+        data: result.rows[0],
       });
     } catch (error) {
       console.error('❌ [markAsReturned] Error:', error);
       console.log('=====================================');
       res.status(500).json({
         success: false,
-        message:  'เกิดข้อผิดพลาด',
+        message: 'เกิดข้อผิดพลาด',
         error: error.message,
       });
     }
