@@ -1,7 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const bookingController = require('../controllers/bookingController');
-const { authenticateToken } = require('../middlewares/authMiddleware');
+const bookingController = require('../controllers/bookingController.js');
+console.log("==== DEBUG BOOKING CONTROLLER ====");
+console.log(bookingController);
+console.log("typeof getUserBookings:", typeof bookingController.getUserBookings);
+console.log("typeof createBooking:", typeof bookingController.createBooking);
+console.log("typeof cancelBooking:", typeof bookingController.cancelBooking);
+console.log("typeof getBookingById:", typeof bookingController.getBookingById);
+const { authenticateToken } = require('../middlewares/authMiddleware.js');
 
 // สร้างคำขอเช่า
 router.post('/', authenticateToken, bookingController.createBooking);

@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const bookingController = require('../controllers/bookingController');
+const bookingController = require('../controllers/bookingController.js');
+console.log('bookingController', bookingController);
+console.log('typeof bookingController.getUserBookings', typeof bookingController.getUserBookings);
+// เช็คทุก method ที่ใช้
 const { authenticateToken } = require('../middlewares/authMiddleware');
 const { requireShop } = require('../middlewares/shopMiddleware');
 
