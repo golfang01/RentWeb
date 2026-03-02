@@ -1,285 +1,151 @@
 const { pool } = require('../config/database');
 
 class ReviewController {
-  // เขียนรีวิว (ต้องเช่าสินค้าแล้ว)
+  // สร้างรีวิว (User หลังจากคืนของแล้ว)
+  // POST /api/reviews
   async createReview(req, res) {
     try {
-      console.log('=====================================');
-      console.log('⭐ [createReview] เริ่มสร้างรีวิว');
-      console.log('⭐ [createReview] req.body:', req.body);
-      console.log('⭐ [createReview] req.params:', req.params);
-      console.log('⭐ [createReview] req.user:', req.user);
-
-      const { id: product_id } = req.params;
-      const { rating, comment } = req.body;
       const user_id = req.user?.user_id || req.user?.id;
+      const { booking_id, rating, comment } = req.body;
 
-      // Validation
-      if (!rating || rating < 1 || rating > 5) {
-        return res.status(400).json({
-          success: false,
-          message: 'กรุณาให้คะแนน 1-5 ดาว',
-        });
+      if (!booking_id || !rating) {
+        return res.status(400).json({ success: false, message: 'กรุณาระบุ booking_id และ rating (1-5)' });
+      }
+      if (rating < 1 || rating > 5) {
+        return res.status(400).json({ success: false, message: 'rating ต้องอยู่ระหว่าง 1 ถึง 5' });
       }
 
-      // ตรวจสอบว่ามีสินค้านี้หรือไม่
-      const productCheck = await pool.query(
-        'SELECT product_id, title FROM Products WHERE product_id = $1',
-        [product_id]
+      const bookingCheck = await pool.query(
+        'SELECT booking_id, status, renter_id, product_id, shop_id FROM Bookings WHERE booking_id = $1 AND renter_id = $2',
+        [booking_id, user_id]
       );
+      if (bookingCheck.rows.length === 0) return res.status(404).json({ success: false, message: 'ไม่พบการจอง' });
 
-      if (productCheck.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'ไม่พบสินค้า',
-        });
+      const booking = bookingCheck.rows[0];
+      if (booking.status !== 'completed') {
+        return res.status(400).json({ success: false, message: 'สามารถรีวิวได้เฉพาะการเช่าที่เสร็จสิ้นแล้วเท่านั้น' });
       }
 
-      // ตรวจสอบว่าเคยเช่าสินค้านี้หรือไม่ (และเสร็จสิ้นแล้ว)
-      const bookingCheck = await pool.query(`
-        SELECT booking_id 
-        FROM Bookings 
-        WHERE renter_id = $1 
-          AND product_id = $2 
-          AND status = 'completed'
-        LIMIT 1
-      `, [user_id, product_id]);
-
-      if (bookingCheck.rows.length === 0) {
-        console.log('❌ [createReview] ยังไม่เคยเช่าสินค้านี้');
-        console.log('=====================================');
-        return res.status(403).json({
-          success: false,
-          message: 'คุณต้องเช่าสินค้านี้และเสร็จสิ้นแล้วจึงจะรีวิวได้',
-        });
+      const existingReview = await pool.query('SELECT review_id FROM Reviews WHERE booking_id = $1', [booking_id]);
+      if (existingReview.rows.length > 0) {
+        return res.status(400).json({ success: false, message: 'คุณรีวิวการเช่านี้ไปแล้ว' });
       }
 
-      const booking_id = bookingCheck.rows[0].booking_id;
-
-      // ตรวจสอบว่าเคยรีวิว booking นี้แล้วหรือยัง
-      const reviewCheck = await pool.query(
-        'SELECT review_id FROM Reviews WHERE booking_id = $1',
-        [booking_id]
-      );
-
-      if (reviewCheck.rows.length > 0) {
-        console.log('❌ [createReview] เคยรีวิวแล้ว');
-        console.log('=====================================');
-        return res.status(400).json({
-          success: false,
-          message: 'คุณเคยรีวิวการจองนี้แล้ว',
-        });
-      }
-
-      // สร้างรีวิว
       const result = await pool.query(`
-        INSERT INTO Reviews (booking_id, rating, comment)
-        VALUES ($1, $2, $3)
+        INSERT INTO Reviews (booking_id, product_id, shop_id, reviewer_id, rating, comment)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
-      `, [booking_id, rating, comment]);
+      `, [booking_id, booking.product_id, booking.shop_id, user_id, rating, comment || null]);
 
-      console.log('✅ [createReview] สร้างรีวิวสำเร็จ');
-      console.log('=====================================');
-
-      res.status(201).json({
-        success: true,
-        message: 'เขียนรีวิวสำเร็จ',
-        data: result.rows[0],
-      });
+      res.status(201).json({ success: true, message: 'รีวิวสำเร็จ ขอบคุณสำหรับความคิดเห็น!', data: result.rows[0] });
     } catch (error) {
       console.error('❌ [createReview] Error:', error);
-      console.log('=====================================');
-      res.status(500).json({
-        success: false,
-        message: 'เกิดข้อผิดพลาด',
-        error: error.message,
-      });
+      res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด', error: error.message });
     }
   }
 
-  // ดูรีวิวทั้งหมดของสินค้า (Public)
+  // ดูรีวิวของสินค้า (Public)
+  // GET /api/reviews/product/:product_id
   async getProductReviews(req, res) {
     try {
-      console.log('=====================================');
-      console.log('⭐ [getProductReviews] เริ่มดึงรีวิว');
+      const { product_id } = req.params;
+      const { page = 1, limit = 10 } = req.query;
+      const offset = (parseInt(page) - 1) * parseInt(limit);
 
-      const { id: product_id } = req.params;
-      console.log('⭐ [getProductReviews] product_id:', product_id);
+      const countResult = await pool.query('SELECT COUNT(*) as total FROM Reviews WHERE product_id = $1', [product_id]);
+      const total = parseInt(countResult.rows[0].total);
 
-      // ตรวจสอบว่ามีสินค้านี้หรือไม่
-      const productCheck = await pool.query(
-        'SELECT product_id, title FROM Products WHERE product_id = $1',
-        [product_id]
-      );
-
-      if (productCheck.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'ไม่พบสินค้า',
-        });
-      }
-
-      // ดึงรีวิวทั้งหมด (JOIN ผ่าน Bookings)
       const result = await pool.query(`
-        SELECT 
-          r.review_id,
-          r.booking_id,
-          r.rating,
-          r.comment,
-          r.created_at,
-          b.renter_id,
-          u.full_name as reviewer_name
+        SELECT r.review_id, r.rating, r.comment, r.created_at,
+               u.full_name AS reviewer_name, u.profile_image AS reviewer_image
         FROM Reviews r
-        INNER JOIN Bookings b ON r.booking_id = b.booking_id
-        LEFT JOIN Users u ON b.renter_id = u.user_id
-        WHERE b.product_id = $1
+        JOIN Users u ON r.reviewer_id = u.user_id
+        WHERE r.product_id = $1
         ORDER BY r.created_at DESC
+        LIMIT $2 OFFSET $3
+      `, [product_id, parseInt(limit), offset]);
+
+      const avgResult = await pool.query(`
+        SELECT COALESCE(ROUND(AVG(rating)::numeric, 1), 0) AS avg_rating, COUNT(*) AS total_reviews,
+          COUNT(CASE WHEN rating = 5 THEN 1 END) AS five_star,
+          COUNT(CASE WHEN rating = 4 THEN 1 END) AS four_star,
+          COUNT(CASE WHEN rating = 3 THEN 1 END) AS three_star,
+          COUNT(CASE WHEN rating = 2 THEN 1 END) AS two_star,
+          COUNT(CASE WHEN rating = 1 THEN 1 END) AS one_star
+        FROM Reviews WHERE product_id = $1
       `, [product_id]);
-
-      // คำนวณค่าเฉลี่ย rating
-      const avgRating = result.rows.length > 0
-        ? (result.rows.reduce((sum, r) => sum + parseFloat(r.rating), 0) / result.rows.length).toFixed(2)
-        : null;
-
-      console.log('⭐ [getProductReviews] พบรีวิว:', result.rows.length);
-      console.log('=====================================');
 
       res.json({
         success: true,
         message: 'ดึงข้อมูลรีวิวสำเร็จ',
-        product: {
-          product_id: productCheck.rows[0].product_id,
-          title: productCheck.rows[0].title,
-          average_rating: avgRating,
-        },
+        summary: avgResult.rows[0],
         data: result.rows,
-        total: result.rows.length,
+        pagination: { total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / parseInt(limit)) },
       });
     } catch (error) {
       console.error('❌ [getProductReviews] Error:', error);
-      console.log('=====================================');
-      res.status(500).json({
-        success: false,
-        message: 'เกิดข้อผิดพลาด',
-        error: error.message,
-      });
+      res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด', error: error.message });
     }
   }
 
-  // แก้ไขรีวิว
-  async updateReview(req, res) {
+  // ดูรีวิวของร้าน (Public)
+  // GET /api/reviews/shop/:shop_id
+  async getShopReviews(req, res) {
     try {
-      console.log('=====================================');
-      console.log('⭐ [updateReview] เริ่มแก้ไขรีวิว');
-      console.log('⭐ [updateReview] req.params:', req.params);
-      console.log('⭐ [updateReview] req.body:', req.body);
+      const { shop_id } = req.params;
+      const { page = 1, limit = 10 } = req.query;
+      const offset = (parseInt(page) - 1) * parseInt(limit);
 
-      const { id: review_id } = req.params;
-      const { rating, comment } = req.body;
-      const user_id = req.user?.user_id || req.user?.id;
+      const countResult = await pool.query('SELECT COUNT(*) as total FROM Reviews WHERE shop_id = $1', [shop_id]);
+      const total = parseInt(countResult.rows[0].total);
 
-      // Validation
-      if (rating && (rating < 1 || rating > 5)) {
-        return res.status(400).json({
-          success: false,
-          message: 'กรุณาให้คะแนน 1-5 ดาว',
-        });
-      }
-
-      // ตรวจสอบว่ารีวิวนี้เป็นของ User นี้หรือไม่ (ผ่าน Bookings)
-      const reviewCheck = await pool.query(`
-        SELECT r.review_id, r.booking_id
-        FROM Reviews r
-        INNER JOIN Bookings b ON r.booking_id = b.booking_id
-        WHERE r.review_id = $1 AND b.renter_id = $2
-      `, [review_id, user_id]);
-
-      if (reviewCheck.rows.length === 0) {
-        console.log('❌ [updateReview] ไม่พบรีวิวหรือไม่มีสิทธิ์');
-        console.log('=====================================');
-        return res.status(403).json({
-          success: false,
-          message: 'ไม่พบรีวิวหรือคุณไม่มีสิทธิ์',
-        });
-      }
-
-      // อัพเดตรีวิว
       const result = await pool.query(`
-        UPDATE Reviews
-        SET 
-          rating = COALESCE($1, rating),
-          comment = COALESCE($2, comment)
-        WHERE review_id = $3
-        RETURNING *
-      `, [rating, comment, review_id]);
-
-      console.log('✅ [updateReview] แก้ไขรีวิวสำเร็จ');
-      console.log('=====================================');
-
-      res.json({
-        success: true,
-        message: 'แก้ไขรีวิวสำเร็จ',
-        data: result.rows[0],
-      });
-    } catch (error) {
-      console.error('❌ [updateReview] Error:', error);
-      console.log('=====================================');
-      res.status(500).json({
-        success: false,
-        message: 'เกิดข้อผิดพลาด',
-        error: error.message,
-      });
-    }
-  }
-
-  // ลบรีวิว
-  async deleteReview(req, res) {
-    try {
-      console.log('=====================================');
-      console.log('🗑️ [deleteReview] เริ่มลบรีวิว');
-
-      const { id: review_id } = req.params;
-      const user_id = req.user?.user_id || req.user?.id;
-
-      // ตรวจสอบว่ารีวิวนี้เป็นของ User นี้หรือไม่ (ผ่าน Bookings)
-      const reviewCheck = await pool.query(`
-        SELECT r.review_id
+        SELECT r.review_id, r.rating, r.comment, r.created_at,
+               u.full_name AS reviewer_name, u.profile_image AS reviewer_image, p.product_name
         FROM Reviews r
-        INNER JOIN Bookings b ON r.booking_id = b.booking_id
-        WHERE r.review_id = $1 AND b.renter_id = $2
-      `, [review_id, user_id]);
+        JOIN Users u ON r.reviewer_id = u.user_id
+        JOIN Products p ON r.product_id = p.product_id
+        WHERE r.shop_id = $1
+        ORDER BY r.created_at DESC
+        LIMIT $2 OFFSET $3
+      `, [shop_id, parseInt(limit), offset]);
 
-      if (reviewCheck.rows.length === 0) {
-        console.log('❌ [deleteReview] ไม่พบรีวิวหรือไม่มีสิทธิ์');
-        console.log('=====================================');
-        return res.status(403).json({
-          success: false,
-          message: 'ไม่พบรีวิวหรือคุณไม่มีสิทธิ์',
-        });
-      }
-
-      // ลบรีวิว
-      const result = await pool.query(
-        'DELETE FROM Reviews WHERE review_id = $1 RETURNING *',
-        [review_id]
+      const avgResult = await pool.query(
+        'SELECT COALESCE(ROUND(AVG(rating)::numeric, 1), 0) AS avg_rating, COUNT(*) AS total_reviews FROM Reviews WHERE shop_id = $1',
+        [shop_id]
       );
 
-      console.log('✅ [deleteReview] ลบรีวิวสำเร็จ');
-      console.log('=====================================');
-
       res.json({
         success: true,
-        message: 'ลบรีวิวสำเร็จ',
-        data: result.rows[0],
+        message: 'ดึงข้อมูลรีวิวร้านสำเร็จ',
+        summary: avgResult.rows[0],
+        data: result.rows,
+        pagination: { total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / parseInt(limit)) },
       });
     } catch (error) {
-      console.error('❌ [deleteReview] Error:', error);
-      console.log('=====================================');
-      res.status(500).json({
-        success: false,
-        message: 'เกิดข้อผิดพลาด',
-        error: error.message,
-      });
+      console.error('❌ [getShopReviews] Error:', error);
+      res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด', error: error.message });
+    }
+  }
+
+  // ดูรีวิวที่ฉันเขียน
+  // GET /api/reviews/my
+  async getMyReviews(req, res) {
+    try {
+      const user_id = req.user?.user_id || req.user?.id;
+      const result = await pool.query(`
+        SELECT r.*, p.product_name, s.shop_name
+        FROM Reviews r
+        JOIN Products p ON r.product_id = p.product_id
+        JOIN Shops s ON r.shop_id = s.shop_id
+        WHERE r.reviewer_id = $1
+        ORDER BY r.created_at DESC
+      `, [user_id]);
+
+      res.json({ success: true, data: result.rows, total: result.rows.length });
+    } catch (error) {
+      console.error('❌ [getMyReviews] Error:', error);
+      res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด', error: error.message });
     }
   }
 }

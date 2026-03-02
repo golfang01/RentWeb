@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const publicProductController = require('../controllers/publicProductController');
 
-// Public routes - ไม่ต้อง Login
+// GET /api/products
 router.get('/', publicProductController.getAllProducts);
-router.get('/:id', publicProductController.getProductById);
+
+// GET /api/products/:id
+router.get('/:id', publicProductController.getProductDetail);
 
 module.exports = router;
