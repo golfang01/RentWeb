@@ -36,8 +36,9 @@ app.use('/api/auth', require('./routes/authRoutes'));
 // Users
 app.use('/api/users', require('./routes/users'));
 app.use('/api/categories', require('./routes/categoryRoutes'));
+// User Bookings (Renter)
+app.use('/api/bookings', require('./routes/userBookingRoutes'));
 
-//  สำคัญ: Route ต้องเรียงจาก Specific → Dynamic
 app.use('/api/shops/products', require('./routes/productRoutes'));
 
 // Shop Bookings (เจ้าของร้าน)
@@ -46,8 +47,8 @@ app.use('/api/shops/bookings', require('./routes/bookingRoutes'));
 // Shops
 app.use('/api/shops', require('./routes/shopRoutes'));
 
-// ✅ User Booking Routes (ฝั่งผู้เช่า) — สร้าง/ดู/ยกเลิกการจอง
-app.use('/api/bookings', require('./routes/bookingRoutes'));
+//  User Booking Routes (ฝั่งผู้เช่า) — สร้าง/ดู/ยกเลิกการจอง
+app.use('/api/bookings', require('./routes/userBookingRoutes'));
 
 // Payments
 app.use('/api/payments', require('./routes/paymentRoutes'));
@@ -98,7 +99,7 @@ const startServer = async () => {
     const dbConnected = await testConnection();
 
     if (!dbConnected) {
-      console.error('❌ Cannot connect to database. Exiting...');
+      console.error(' Cannot connect to database. Exiting...');
       process.exit(1);
     }
 

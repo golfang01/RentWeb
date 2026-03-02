@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #FFF8F3;
+  color-scheme: light;
+}
+
+body {
+  font-family: 'Inter', 'Noto Sans Thai', sans-serif;
+  color: #111827;
+  -webkit-font-smoothing: antialiased;
+}
