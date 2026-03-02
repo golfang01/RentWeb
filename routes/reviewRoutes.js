@@ -3,12 +3,16 @@ const router = express.Router();
 const reviewController = require('../controllers/reviewController');
 const { authenticateToken } = require('../middlewares/authMiddleware');
 
-// Public route - ดูรีวิว (ไม่ต้อง Login)
-router.get('/:id/reviews', reviewController.getProductReviews);
+// GET /api/reviews/my (ต้อง Login)
+router.get('/my', authenticateToken, reviewController.getMyReviews);
 
-// Protected routes - ต้อง Login
-router.post('/:id/reviews', authenticateToken, reviewController.createReview);
-router.put('/reviews/:id', authenticateToken, reviewController.updateReview);
-router.delete('/reviews/:id', authenticateToken, reviewController.deleteReview);
+// POST /api/reviews (ต้อง Login)
+router.post('/', authenticateToken, reviewController.createReview);
+
+// GET /api/reviews/product/:product_id (Public)
+router.get('/product/:product_id', reviewController.getProductReviews);
+
+// GET /api/reviews/shop/:shop_id (Public)
+router.get('/shop/:shop_id', reviewController.getShopReviews);
 
 module.exports = router;
