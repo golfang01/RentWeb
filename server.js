@@ -31,21 +31,22 @@ app.get('/health', (req, res) => {
 
 // ============================================================
 // Routes API
-// ============================================================
-
-// Auth & Users
 app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/users', require('./routes/users'));
 
-// Categories
+// Users
+app.use('/api/users', require('./routes/users'));
 app.use('/api/categories', require('./routes/categoryRoutes'));
 
-// สำคัญ: Route ต้องเรียงจาก Specific → Dynamic
+//  สำคัญ: Route ต้องเรียงจาก Specific → Dynamic
 app.use('/api/shops/products', require('./routes/productRoutes'));
+
+// Shop Bookings (เจ้าของร้าน)
 app.use('/api/shops/bookings', require('./routes/bookingRoutes'));
+
+// Shops
 app.use('/api/shops', require('./routes/shopRoutes'));
 
-// Bookings (User side)
+// ✅ User Booking Routes (ฝั่งผู้เช่า) — สร้าง/ดู/ยกเลิกการจอง
 app.use('/api/bookings', require('./routes/bookingRoutes'));
 
 // Payments
@@ -71,11 +72,19 @@ app.use('/api/upload', require('./routes/uploadRoutes'));
 
 // ============================================================
 
-// Error handler
+// Payments (อัปโหลดสลิป, ยืนยันการชำระ)
+app.use('/api/payments', require('./routes/paymentRoutes'));
+
+// Reviews (รีวิวสินค้า/ร้าน)
+app.use('/api/reviews', require('./routes/reviewRoutes'));
+
+// ============================================================
+// Error & 404 handlers
+// ============================================================
+
 const { errorHandler } = require('./middlewares/errorHandler');
 app.use(errorHandler);
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,

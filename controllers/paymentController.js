@@ -1,10 +1,12 @@
 const { pool } = require('../config/database');
 
 class PaymentController {
-  // ��ัปโหลดสลิปการชำระเงิน (User)
+  // อัปโหลดสลิปการชำระเงิน (User)
   // POST /api/payments/:booking_id/slip
   async uploadSlip(req, res) {
     try {
+      console.log('=====================================');
+      console.log('💳 [uploadSlip] เริ่มอัปโหลดสลิป');
       const { booking_id } = req.params;
       const user_id = req.user?.user_id || req.user?.id;
       const { slip_image_url } = req.body;
@@ -40,6 +42,9 @@ class PaymentController {
 
       await pool.query(`UPDATE Bookings SET status = 'waiting_verification' WHERE booking_id = $1`, [booking_id]);
 
+  // ...existing code...
+  console.log('✅ [uploadSlip] อัปโหลดสลิปสำเร็จ');
+  console.log('=====================================');
       res.status(201).json({ success: true, message: 'อัปโหลดสลิปสำเร็จ รอร้านค้าตรวจสอบ', data: paymentResult.rows[0] });
     } catch (error) {
       console.error('❌ [uploadSlip] Error:', error);
@@ -104,6 +109,12 @@ class PaymentController {
       await pool.query(`UPDATE Bookings SET status = 'confirmed' WHERE booking_id = $1`, [booking_id]);
 
       res.json({ success: true, message: 'ปฏิเสธสลิปสำเร็จ กรุณาแจ้งให้ผู้เช่าส่งสลิปใหม่' });
+
+      await pool.query(`UPDATE Payments SET payment_status = 'rejected', reject_reason = $2, updated_at = NOW() WHERE booking_id = $1`, [booking_id, reason || null]);
+      const result = await pool.query(`UPDATE Bookings SET status = 'confirmed' WHERE booking_id = $1 RETURNING *`, [booking_id]);
+
+      res.json({ success: true, message: 'ปฏิเสธสลิปสำเร็จ กรุณาแจ้งให้ผู้เช่าส่งสลิปใหม่', data: result.rows[0] });
+
     } catch (error) {
       console.error('❌ [rejectPayment] Error:', error);
       res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด', error: error.message });
@@ -118,8 +129,7 @@ class PaymentController {
       const user_id = req.user?.user_id || req.user?.id;
 
       const result = await pool.query(`
-        SELECT pay.*, b.status AS booking_status, b.total_price, b.deposit_held,
-               p.product_name, u.full_name AS payer_name
+  SELECT pay.*, b.status AS booking_status, b.total_price, b.deposit_held, p.product_name, u.full_name AS payer_name
         FROM Payments pay
         JOIN Bookings b ON pay.booking_id = b.booking_id
         JOIN Products p ON b.product_id = p.product_id
