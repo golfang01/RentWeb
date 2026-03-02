@@ -4,6 +4,6 @@ const publicProductController = require('../controllers/publicProductController'
 
 // Public routes - ไม่ต้อง Login
 router.get('/', publicProductController.getAllProducts);
-router.get('/:id', publicProductController.getProductById);
+router.get('/:id', publicProductController.getProductDetail);
 
 module.exports = router;
