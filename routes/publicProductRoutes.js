@@ -7,3 +7,4 @@ router.get('/', publicProductController.getAllProducts);
 router.get('/:id', publicProductController.getProductDetail);
 
 module.exports = router;
+const conditions = ["p.status = 'active'"];  // ✅ ถูก
