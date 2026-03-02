@@ -9,20 +9,20 @@ class ProductController {
       console.log('📦 [createProduct] req.shop:', req.shop);
       console.log('📦 [createProduct] req.body:', req.body);
       
-      const shop_id = req. shop?.shop_id;
+      const shop_id = req.shop?.shop_id;
       console.log('📦 [createProduct] shop_id:', shop_id);
       
       const {
-        product_name,
+        title,
         description,
         category_id,
-        daily_rate,
+        price_per_day,
         deposit_amount,
         product_images,
-      } = req. body;
+      } = req.body;
 
       // Validation
-      if (!product_name || ! daily_rate || !deposit_amount) {
+      if (!title || !price_per_day || !deposit_amount) {
         console.log('❌ [createProduct] ข้อมูลไม่ครบ');
         console.log('=====================================');
         return res.status(400).json({
@@ -33,12 +33,12 @@ class ProductController {
 
       const result = await pool.query(`
         INSERT INTO Products (
-          shop_id, product_name, description, category_id,
-          daily_rate, deposit_amount, availability_status
+          shop_id, title, description, category_id,
+          price_per_day, deposit_amount, status
         )
-        VALUES ($1, $2, $3, $4, $5, $6, 'available')
+        VALUES ($1, $2, $3, $4, $5, $6, 'active')
         RETURNING *
-      `, [shop_id, product_name, description, category_id, daily_rate, deposit_amount]);
+      `, [shop_id, title, description, category_id, price_per_day, deposit_amount]);
 
       const product = result.rows[0];
       console.log('✅ [createProduct] สร้างสินค้าสำเร็จ:', product);
@@ -66,7 +66,7 @@ class ProductController {
       console.log('=====================================');
       res.status(500).json({
         success: false,
-        message:  'เกิดข้อผิดพลาด',
+        message: 'เกิดข้อผิดพลาด',
         error: error.message,
       });
     }
@@ -91,15 +91,18 @@ class ProductController {
         });
       }
 
-      console.log('🔍 [getMyProducts] กำลัง Query database.. .');
+      console.log('🔍 [getMyProducts] กำลัง Query database...');
       
       const result = await pool.query(`
         SELECT 
           p.*,
+          p.title AS product_name,
+          p.price_per_day AS daily_rate,
+          p.status AS availability_status,
           c.category_name,
           COALESCE(
             json_agg(
-              json_build_object('image_url', pi.image_url, 'display_order', pi. display_order)
+              json_build_object('image_url', pi.image_url, 'display_order', pi.display_order)
               ORDER BY pi.display_order
             ) FILTER (WHERE pi.image_id IS NOT NULL),
             '[]'
@@ -113,14 +116,13 @@ class ProductController {
       `, [shop_id]);
 
       console.log('✅ [getMyProducts] Query สำเร็จ');
-      console.log('📦 [getMyProducts] ผลลัพธ์:', result.rows);
-      console.log('📦 [getMyProducts] จำนวนสินค้า:', result. rows.length);
+      console.log('📦 [getMyProducts] จำนวนสินค้า:', result.rows.length);
       console.log('=====================================');
 
       res.json({
         success: true,
-        data: result. rows,
-        total: result. rows.length,
+        data: result.rows,
+        total: result.rows.length,
       });
     } catch (error) {
       console.error('❌ [getMyProducts] Error:', error);
@@ -128,7 +130,7 @@ class ProductController {
       console.log('=====================================');
       res.status(500).json({
         success: false,
-        message:  'เกิดข้อผิดพลาด',
+        message: 'เกิดข้อผิดพลาด',
         error: error.message,
       });
     }
@@ -140,7 +142,7 @@ class ProductController {
       console.log('=====================================');
       console.log('📦 [getProductById] เริ่มดึงสินค้าตาม ID');
       
-      const { id } = req. params;
+      const { id } = req.params;
       const shop_id = req.shop?.shop_id;
       
       console.log('📦 [getProductById] product_id:', id);
@@ -149,10 +151,13 @@ class ProductController {
       const result = await pool.query(`
         SELECT 
           p.*,
+          p.title AS product_name,
+          p.price_per_day AS daily_rate,
+          p.status AS availability_status,
           c.category_name,
           COALESCE(
             json_agg(
-              json_build_object('image_url', pi.image_url, 'display_order', pi. display_order)
+              json_build_object('image_url', pi.image_url, 'display_order', pi.display_order)
               ORDER BY pi.display_order
             ) FILTER (WHERE pi.image_id IS NOT NULL),
             '[]'
@@ -176,40 +181,40 @@ class ProductController {
 
       res.json({
         success: true,
-        data:  result.rows[0],
+        data: result.rows[0],
       });
     } catch (error) {
       console.error('❌ [getProductById] Error:', error);
       console.log('=====================================');
       res.status(500).json({
         success: false,
-        message:  'เกิดข้อผิดพลาด',
+        message: 'เกิดข้อผิดพลาด',
         error: error.message,
       });
     }
   }
 
-  // แก้ไขสิน��้า
+  // แก้ไขสินค้า
   async updateProduct(req, res) {
     try {
-      console. log('=====================================');
+      console.log('=====================================');
       console.log('📦 [updateProduct] เริ่มแก้ไขสินค้า');
       
-      const { id } = req. params;
+      const { id } = req.params;
       const shop_id = req.shop?.shop_id;
       
       console.log('📦 [updateProduct] product_id:', id);
       console.log('📦 [updateProduct] shop_id:', shop_id);
-      console.log('📦 [updateProduct] req.body:', req. body);
+      console.log('📦 [updateProduct] req.body:', req.body);
       
       const {
-        product_name,
+        title,
         description,
         category_id,
-        daily_rate,
+        price_per_day,
         deposit_amount,
-        availability_status,
-      } = req. body;
+        status,
+      } = req.body;
 
       // Check ownership
       const checkOwner = await pool.query(
@@ -219,7 +224,7 @@ class ProductController {
 
       console.log('📦 [updateProduct] Check ownership:', checkOwner.rows);
 
-      if (checkOwner. rows.length === 0) {
+      if (checkOwner.rows.length === 0) {
         console.log('❌ [updateProduct] ไม่พบสินค้าหรือไม่มีสิทธิ์');
         console.log('=====================================');
         return res.status(404).json({
@@ -233,9 +238,9 @@ class ProductController {
       const values = [];
       let paramIndex = 1;
 
-      if (product_name !== undefined) {
-        fields.push(`product_name = $${paramIndex}`);
-        values.push(product_name);
+      if (title !== undefined) {
+        fields.push(`title = $${paramIndex}`);
+        values.push(title);
         paramIndex++;
       }
       if (description !== undefined) {
@@ -248,9 +253,9 @@ class ProductController {
         values.push(category_id);
         paramIndex++;
       }
-      if (daily_rate !== undefined) {
-        fields.push(`daily_rate = $${paramIndex}`);
-        values.push(daily_rate);
+      if (price_per_day !== undefined) {
+        fields.push(`price_per_day = $${paramIndex}`);
+        values.push(price_per_day);
         paramIndex++;
       }
       if (deposit_amount !== undefined) {
@@ -258,18 +263,18 @@ class ProductController {
         values.push(deposit_amount);
         paramIndex++;
       }
-      if (availability_status !== undefined) {
-        fields.push(`availability_status = $${paramIndex}`);
-        values.push(availability_status);
+      if (status !== undefined) {
+        fields.push(`status = $${paramIndex}`);
+        values.push(status);
         paramIndex++;
       }
 
-      if (fields. length === 0) {
+      if (fields.length === 0) {
         console.log('❌ [updateProduct] ไม่มีข้อมูลที่จะแก้ไข');
         console.log('=====================================');
-        return res. status(400).json({
+        return res.status(400).json({
           success: false,
-          message:  'ไม่มีข้อมูลที่จะแก้ไข',
+          message: 'ไม่มีข้อมูลที่จะแก้ไข',
         });
       }
 
@@ -291,8 +296,8 @@ class ProductController {
 
       res.json({
         success: true,
-        message: 'แก้ไขสินค้าสำเร็��',
-        data:  result.rows[0],
+        message: 'แก้ไขสินค้าสำเร็จ',
+        data: result.rows[0],
       });
     } catch (error) {
       console.error('❌ [updateProduct] Error:', error);
@@ -305,21 +310,21 @@ class ProductController {
     }
   }
 
-  // ลบสินค้า (Soft delete - เปลี่ยนเป็น unavailable)
+  // ลบสินค้า (Soft delete - เปลี่ยนเป็น inactive)
   async deleteProduct(req, res) {
     try {
       console.log('=====================================');
       console.log('📦 [deleteProduct] เริ่มลบสินค้า');
       
       const { id } = req.params;
-      const shop_id = req. shop?.shop_id;
+      const shop_id = req.shop?.shop_id;
       
       console.log('📦 [deleteProduct] product_id:', id);
       console.log('📦 [deleteProduct] shop_id:', shop_id);
 
       const result = await pool.query(`
         UPDATE Products
-        SET availability_status = 'unavailable'
+        SET status = 'inactive'
         WHERE product_id = $1 AND shop_id = $2
         RETURNING *
       `, [id, shop_id]);
