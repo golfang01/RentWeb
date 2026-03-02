@@ -7,7 +7,7 @@ class PublicProductController {
       const offset = (parseInt(page) - 1) * parseInt(limit);
       const params = [];
       let paramIndex = 1;
-      const conditions = ["p.status = 'active'"]; 
+      const conditions = ["p.status = 'active'"];
 
       if (search) { conditions.push(`(p.title ILIKE $${paramIndex} OR p.description ILIKE $${paramIndex})`); params.push(`%${search}%`); paramIndex++; }
       if (category_id) { conditions.push(`p.category_id = $${paramIndex}`); params.push(parseInt(category_id)); paramIndex++; }
@@ -15,7 +15,10 @@ class PublicProductController {
       if (max_price) { conditions.push(`p.price_per_day <= $${paramIndex}`); params.push(parseFloat(max_price)); paramIndex++; }
 
       const whereClause = 'WHERE ' + conditions.join(' AND ');
-      const countResult = await pool.query('SELECT COUNT(DISTINCT p.product_id) as total FROM Products p ' + whereClause, params);
+      const countResult = await pool.query(
+        'SELECT COUNT(DISTINCT p.product_id) as total FROM products p ' + whereClause,
+        params
+      );
       const total = parseInt(countResult.rows[0].total);
 
       const result = await pool.query(`
@@ -31,13 +34,17 @@ class PublicProductController {
           c.name AS category_name,
           s.shop_id,
           s.shop_name,
-          COALESCE((SELECT json_agg(json_build_object('image_url', pi.image_url, 'display_order', pi.display_order) ORDER BY pi.display_order) FROM Product_Images pi WHERE pi.product_id = p.product_id), '[]') AS images,
-          COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0) AS avg_rating,
-          COUNT(DISTINCT r.review_id) AS review_count
-        FROM Products p
-        LEFT JOIN Categories c ON p.category_id = c.category_id
-        LEFT JOIN Shops s ON p.shop_id = s.shop_id
-        LEFT JOIN Reviews r ON p.product_id = r.product_id
+          COALESCE(
+            (SELECT json_agg(
+              json_build_object('image_url', pi.image_url, 'is_primary', pi.is_primary)
+            ) FROM product_images pi WHERE pi.product_id = p.product_id),
+            '[]'
+          ) AS images,
+          0 AS avg_rating,
+          0 AS review_count
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.category_id
+        LEFT JOIN shops s ON p.shop_id = s.shop_id
         ${whereClause}
         GROUP BY p.product_id, c.category_id, c.name, s.shop_id, s.shop_name
         ORDER BY p.created_at DESC
@@ -78,13 +85,17 @@ class PublicProductController {
           s.shop_id,
           s.shop_name,
           s.description AS shop_description,
-          COALESCE((SELECT json_agg(json_build_object('image_url', pi.image_url, 'display_order', pi.display_order) ORDER BY pi.display_order) FROM Product_Images pi WHERE pi.product_id = p.product_id), '[]') AS images,
-          COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0) AS avg_rating,
-          COUNT(DISTINCT r.review_id) AS review_count
-        FROM Products p
-        LEFT JOIN Categories c ON p.category_id = c.category_id
-        LEFT JOIN Shops s ON p.shop_id = s.shop_id
-        LEFT JOIN Reviews r ON p.product_id = r.product_id
+          COALESCE(
+            (SELECT json_agg(
+              json_build_object('image_url', pi.image_url, 'is_primary', pi.is_primary)
+            ) FROM product_images pi WHERE pi.product_id = p.product_id),
+            '[]'
+          ) AS images,
+          0 AS avg_rating,
+          0 AS review_count
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.category_id
+        LEFT JOIN shops s ON p.shop_id = s.shop_id
         WHERE p.product_id = $1
         GROUP BY p.product_id, c.category_id, c.name, s.shop_id, s.shop_name, s.description
       `, [id]);
