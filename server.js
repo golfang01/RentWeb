@@ -32,20 +32,21 @@ app.get('/health', (req, res) => {
 // ============================================================
 // Routes API
 // ============================================================
-app.use('/api/auth',           require('./routes/authRoutes'));
-app.use('/api/users',          require('./routes/users'));
-app.use('/api/categories',     require('./routes/categoryRoutes'));
-app.use('/api/bookings',       require('./routes/userBookingRoutes'));
-app.use('/api/shops/products', require('./routes/productRoutes'));
-app.use('/api/shops/bookings', require('./routes/bookingRoutes'));
-app.use('/api/shops',          require('./routes/shopRoutes'));
-app.use('/api/payments',       require('./routes/paymentRoutes'));
-app.use('/api/reviews',        require('./routes/reviewRoutes'));
-app.use('/api/addresses',      require('./routes/addressRoutes'));
-app.use('/api/products',       require('./routes/productImageRoutes'));
-app.use('/api/wallet',         require('./routes/walletRoutes'));
-app.use('/api/admin',          require('./routes/adminRoutes'));
-app.use('/api/upload',         require('./routes/uploadRoutes'));
+app.use('/api/auth',              require('./routes/authRoutes'));
+app.use('/api/users',             require('./routes/users'));
+app.use('/api/categories',        require('./routes/categoryRoutes'));
+app.use('/api/bookings',          require('./routes/userBookingRoutes'));
+app.use('/api/shops/products',    require('./routes/productRoutes'));
+app.use('/api/shops/bookings',    require('./routes/bookingRoutes'));
+app.use('/api/shops',             require('./routes/shopRoutes'));
+app.use('/api/payments',          require('./routes/paymentRoutes'));
+app.use('/api/reviews',           require('./routes/reviewRoutes'));
+app.use('/api/addresses',         require('./routes/addressRoutes'));
+app.use('/api/products',          require('./routes/publicProductRoutes'));
+app.use('/api/product-images',    require('./routes/productImageRoutes'));
+app.use('/api/wallet',            require('./routes/walletRoutes'));
+app.use('/api/admin',             require('./routes/adminRoutes'));
+app.use('/api/upload',            require('./routes/uploadRoutes'));
 
 // ============================================================
 // Error & 404 handlers
