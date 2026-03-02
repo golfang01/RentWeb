@@ -13,7 +13,7 @@ class AuthController {
       console.log('🔐 [register] เริ่มลงทะเบียน');
       console.log('🔐 [register] req.body:', req.body);
       
-      const { email, password, full_name } = req.body;
+      const { email, password, full_name, role } = req.body;
 
       // Validation
       if (!email || !password || !full_name) {
@@ -51,11 +51,11 @@ class AuthController {
 
       // Create user
       const user = await User.create({
-        email,
-        password_hash,
-        full_name,
-        role:  'user',
-      });
+  email,
+  password_hash,
+  full_name,
+  role: role === 'shop_owner' ? 'shop_owner' : 'user', // ← hardcode! ไม่ได้รับค่าจาก req.body เลย
+});
 
       console.log('✅ [register] สร้าง User สำเร็จ:', user.user_id);
 

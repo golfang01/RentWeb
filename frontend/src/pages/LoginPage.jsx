@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuth from '../contex/useAuth';
 import { authService } from '../api/authService';
+import { shopService } from '../api/shopService';
 
 const EyeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -24,24 +25,26 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = async (e) => {
+    const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      const res = await authService.login(form);
-
-      // ✅ Response: { success, message, data: { user, token } }
+      const res = await authService.login({ email: form.email, password: form.password });
       const { user, token } = res.data.data;
-
-      if (!token) {
-        setError('ไม่ได้รับ Token จาก Server');
-        return;
-      }
-
       login(user, token);
-      navigate('/');
 
+      if (user.role === 'shop_owner') {
+        try {
+          // ✅ ส่ง token ตรงๆ เลย ไม่ต้องรอ axios interceptor
+          await shopService.getMyShop(token);
+          navigate('/shop/dashboard');
+        } catch {
+          navigate('/shop/create');
+        }
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
     } finally {

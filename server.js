@@ -36,6 +36,7 @@ app.use('/api/auth',              require('./routes/authRoutes'));
 app.use('/api/users',             require('./routes/users'));
 app.use('/api/categories',        require('./routes/categoryRoutes'));
 app.use('/api/bookings',          require('./routes/userBookingRoutes'));
+app.use('/api/bookings',          require('./routes/bookingRoutes'));
 app.use('/api/shops/products',    require('./routes/productRoutes'));
 app.use('/api/shops/bookings',    require('./routes/bookingRoutes'));
 app.use('/api/shops',             require('./routes/shopRoutes'));

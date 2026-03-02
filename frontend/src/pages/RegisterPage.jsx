@@ -29,7 +29,7 @@ const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = async (e) => {
+    const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -45,8 +45,15 @@ const RegisterPage = () => {
         phone: form.phone,
         role: form.role,
       });
-      setSuccess('สมัครสมาชิกสำเร็จ! กำลังพาไปหน้า Login...');
+
+      if (form.role === 'shop_owner') {
+        // ✅ แจ้งให้รู้ว่าต้อง Login แล้วสร้างร้าน
+        setSuccess('สมัครสำเร็จ! กรุณา Login แล้วระบบจะพาไปสร้างร้านอัตโนมัติ 🏪');
+      } else {
+        setSuccess('สมัครสมาชิกสำเร็จ! กำลังพาไปหน้า Login...');
+      }
       setTimeout(() => navigate('/login'), 2000);
+
     } catch (err) {
       setError(err.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
     } finally {

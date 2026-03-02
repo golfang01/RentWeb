@@ -206,13 +206,13 @@ class BookingController {
     }
   }
 
-  // ✅ อนุมัติการจอง
+    // ✅ อนุมัติการจอง
   async approveBooking(req, res) {
     try {
       const { id } = req.params;
       const shop_id = req.shop?.shop_id;
       const result = await pool.query(
-        `UPDATE bookings SET status = 'confirmed'
+        `UPDATE bookings SET status = 'approved'   -- ← เปลี่ยนจาก 'confirmed'
          WHERE booking_id = $1 AND shop_id = $2
          RETURNING *`,
         [id, shop_id]
@@ -220,6 +220,64 @@ class BookingController {
       if (result.rows.length === 0)
         return res.status(404).json({ success: false, message: 'ไม่พบการจอง' });
       res.json({ success: true, message: 'อนุมัติการจองสำเร็จ', data: result.rows[0] });
+    } catch (error) {
+      console.error('❌ [approveBooking] Error:', error.message);
+      res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด', error: error.message });
+    }
+  }
+
+  // ✅ ปฏิเสธการจอง
+  async rejectBooking(req, res) {
+    try {
+      const { id } = req.params;
+      const shop_id = req.shop?.shop_id;
+      const result = await pool.query(
+        `UPDATE bookings SET status = 'cancelled'  -- ← เปลี่ยนจาก 'rejected'
+         WHERE booking_id = $1 AND shop_id = $2
+         RETURNING *`,
+        [id, shop_id]
+      );
+      if (result.rows.length === 0)
+        return res.status(404).json({ success: false, message: 'ไม่พบการจอง' });
+      res.json({ success: true, message: 'ปฏิเสธการจองสำเร็จ', data: result.rows[0] });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด', error: error.message });
+    }
+  }
+
+  // ✅ รับของแล้ว — confirmed → approved ก่อน picked_up
+  async markAsPickedUp(req, res) {
+    try {
+      const { id } = req.params;
+      const shop_id = req.shop?.shop_id;
+      const result = await pool.query(
+        `UPDATE bookings SET status = 'picked_up'
+         WHERE booking_id = $1 AND shop_id = $2 AND status = 'approved'  -- ← เปลี่ยนจาก 'confirmed'
+         RETURNING *`,
+        [id, shop_id]
+      );
+      if (result.rows.length === 0)
+        return res.status(404).json({ success: false, message: 'ไม่พบการจอง หรือสถานะไม่ถูกต้อง' });
+      res.json({ success: true, message: 'อัปเดตสถานะ "รับของแล้ว" สำเร็จ', data: result.rows[0] });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด', error: error.message });
+    }
+  }
+
+  // ✅ คืนของแล้ว
+  async markAsReturned(req, res) {
+    try {
+      const { id } = req.params;
+      const shop_id = req.shop?.shop_id;
+      const result = await pool.query(
+        `UPDATE bookings SET status = 'returned'   -- ← เปลี่ยนจาก 'completed'
+         WHERE booking_id = $1 AND shop_id = $2 AND status = 'picked_up'
+         RETURNING *`,
+        [id, shop_id]
+      );
+      if (result.rows.length === 0)
+        return res.status(404).json({ success: false, message: 'ไม่พบการจอง หรือสถานะไม่ถูกต้อง' });
+      res.json({ success: true, message: 'อัปเดตสถานะ "คืนของแล้ว" สำเร็จ', data: result.rows[0] });
     } catch (error) {
       res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด', error: error.message });
     }

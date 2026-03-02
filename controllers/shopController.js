@@ -52,12 +52,24 @@ class ShopController {
         });
       }
 
-      // สร้างร้านใหม่
+            // สร้างร้านใหม่
       const result = await pool.query(`
         INSERT INTO Shops (user_id, shop_name, description, shop_logo, wallet_balance)
         VALUES ($1, $2, $3, $4, 0.00)
         RETURNING *
       `, [user_id, shop_name, description || null, shop_logo || null]);
+
+      // ✅ อัปเดต role เป็น shop_owner ทันที
+      await pool.query(
+        `UPDATE Users SET role = 'shop_owner' WHERE user_id = $1`,
+        [user_id]
+      );
+
+      // ✅ ดึงข้อมูล user ที่อัปเดตแล้วส่งกลับด้วย
+      const updatedUser = await pool.query(
+        `SELECT user_id, email, full_name, role, phone, kyc_status, created_at FROM Users WHERE user_id = $1`,
+        [user_id]
+      );
 
       console.log('✅ [createShop] สร้างร้านสำเร็จ:', result.rows[0]);
       console.log('=====================================');
@@ -66,6 +78,7 @@ class ShopController {
         success: true,
         message: 'สร้างร้านค้าสำเร็จ',
         data: result.rows[0],
+        user: updatedUser.rows[0], // ✅ ส่ง user ที่มี role ใหม่กลั���ไปด้วย
       });
     } catch (error) {
       console.error('❌ [createShop] Error:', error);

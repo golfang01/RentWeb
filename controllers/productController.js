@@ -99,11 +99,13 @@ class ProductController {
           p.title AS product_name,
           p.price_per_day AS daily_rate,
           p.status AS availability_status,
-          c.category_name,
-          COALESCE(
+          c.name AS category_name,
+                   COALESCE(
             json_agg(
-              json_build_object('image_url', pi.image_url, 'display_order', pi.display_order)
-              ORDER BY pi.display_order
+              json_build_object(
+                'image_url', pi.image_url,
+                'is_primary', pi.is_primary
+              ) ORDER BY pi.is_primary DESC
             ) FILTER (WHERE pi.image_id IS NOT NULL),
             '[]'
           ) as images
@@ -111,7 +113,7 @@ class ProductController {
         LEFT JOIN Categories c ON p.category_id = c.category_id
         LEFT JOIN Product_Images pi ON p.product_id = pi.product_id
         WHERE p.shop_id = $1
-        GROUP BY p.product_id, c.category_name
+        GROUP BY p.product_id, c.category_id, c.name
         ORDER BY p.created_at DESC
       `, [shop_id]);
 
@@ -154,11 +156,13 @@ class ProductController {
           p.title AS product_name,
           p.price_per_day AS daily_rate,
           p.status AS availability_status,
-          c.category_name,
-          COALESCE(
+          c.name AS category_name,
+                    COALESCE(
             json_agg(
-              json_build_object('image_url', pi.image_url, 'display_order', pi.display_order)
-              ORDER BY pi.display_order
+              json_build_object(
+                'image_url', pi.image_url,
+                'is_primary', pi.is_primary
+              ) ORDER BY pi.is_primary DESC
             ) FILTER (WHERE pi.image_id IS NOT NULL),
             '[]'
           ) as images
@@ -166,7 +170,7 @@ class ProductController {
         LEFT JOIN Categories c ON p.category_id = c.category_id
         LEFT JOIN Product_Images pi ON p.product_id = pi.product_id
         WHERE p.product_id = $1 AND p.shop_id = $2
-        GROUP BY p.product_id, c.category_name
+        GROUP BY p.product_id, c.category_id, c.name
       `, [id, shop_id]);
 
       console.log('📦 [getProductById] ผลลัพธ์:', result.rows);
