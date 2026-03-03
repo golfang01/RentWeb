@@ -1,33 +1,36 @@
 import { useEffect, useState, useCallback } from 'react';
 import Navbar from '../../components/Navbar';
 import { bookingService } from '../../api/bookingService';
+import { paymentService } from '../../api/paymentService';
 
-// 1️⃣ statusConfig — เปลี่ยน confirmed → approved, เพิ่ม approved
 const statusConfig = {
-  pending:   { text: 'รอดำเนินการ', bg: '#FEF9C3', color: '#854D0E', border: '#FDE047' },
-  approved:  { text: 'อนุมัติแล้ว', bg: '#DBEAFE', color: '#1E40AF', border: '#93C5FD' }, // ← เปลี่ยน confirmed → approved
-  paid:      { text: 'ชำระแล้ว',   bg: '#DCFCE7', color: '#15803D', border: '#86EFAC' }, // ← เพิ่ม
-  picked_up: { text: 'รับของแล้ว',  bg: '#F3E8FF', color: '#6B21A8', border: '#C084FC' },
-  returned:  { text: 'คืนของแล้ว', bg: '#E0F2FE', color: '#0369A1', border: '#7DD3FC' }, // ← เพิ่ม
-  completed: { text: 'เสร็จสิ้น',   bg: '#DCFCE7', color: '#15803D', border: '#86EFAC' },
-  cancelled: { text: 'ยกเลิก',      bg: '#F3F4F6', color: '#6B7280', border: '#D1D5DB' },
-  disputed:  { text: 'ร้องเรียน',   bg: '#FEE2E2', color: '#DC2626', border: '#FCA5A5' }, // ← เพิ่ม
+  pending:   { text: 'รอดำเนินการ',   bg: '#FEF9C3', color: '#854D0E', border: '#FDE047' },
+  approved:  { text: 'อนุมัติแล้ว',    bg: '#DBEAFE', color: '#1E40AF', border: '#93C5FD' },
+  waiting_verification: { text: 'รอตรวจสอบสลิป', bg: '#FFEFC7', color: '#B45309', border: '#FBBF24' },
+  picked_up: { text: 'รับของแล้ว',     bg: '#F3E8FF', color: '#6B21A8', border: '#C084FC' },
+  completed: { text: 'เสร็จสิ้น',      bg: '#DCFCE7', color: '#15803D', border: '#86EFAC' },
+  cancelled: { text: 'ยกเลิก',         bg: '#F3F4F6', color: '#6B7280', border: '#D1D5DB' },
+  rejected:  { text: 'ถูกปฏิเสธ',      bg: '#FEE2E2', color: '#DC2626', border: '#FCA5A5' },
 };
 
-// 2️⃣ tabList — เปลี่ยน confirmed → approved
 const tabList = [
-  { key: 'all',       label: 'ทั้งหมด' },
-  { key: 'pending',   label: 'รอดำเนินการ' },
-  { key: 'approved',  label: 'อนุมัติแล้ว' }, // ← เปลี่ยน confirmed → approved
-  { key: 'picked_up', label: 'รับของแล้ว' },
-  { key: 'completed', label: 'เสร็จสิ้น' },
+  { key: 'all',      label: 'ทั้งหมด' },
+  { key: 'pending',  label: 'รอดำเนินการ' },
+  { key: 'approved', label: 'อนุมัติแล้ว' },
+  { key: 'waiting_verification', label: 'รอตรวจสลิป' },
+  { key: 'picked_up',label: 'รับของแล้ว' },
+  { key: 'completed',label: 'เสร็จสิ้น' },
+  { key: 'cancelled',label: 'ยกเลิก' },
 ];
 
 const ShopBookingsPage = () => {
-  const [bookings, setBookings]         = useState([]);
-  const [loading, setLoading]           = useState(true);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
-  const [activeTab, setActiveTab]       = useState('all');
+  const [activeTab, setActiveTab] = useState('all');
+  const [showSlip, setShowSlip] = useState(false);
+  const [slipUrl, setSlipUrl] = useState('');
+  const [selectedBooking, setSelectedBooking] = useState(null);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -40,21 +43,69 @@ const ShopBookingsPage = () => {
 
   useEffect(() => { fetchBookings(); }, [fetchBookings]);
 
-  const handleAction = async (action, id) => {
-    setActionLoading(id + action);
+  // ดึงสลิป
+  const handleShowSlip = async (booking_id) => {
     try {
-      if (action === 'approve') await bookingService.approveBooking(id);
-      if (action === 'reject')  await bookingService.rejectBooking(id);
-      if (action === 'pickup')  await bookingService.markAsPickedUp(id);
-      if (action === 'return')  await bookingService.markAsReturned(id);
+      const res = await paymentService.getPaymentByBooking(booking_id);
+      let pdata = Array.isArray(res.data.data) ? res.data.data[0] : res.data.data;
+      setSlipUrl(pdata?.slip_image_url);
+      setShowSlip(true);
+      setSelectedBooking(booking_id);
+    } catch {
+      setSlipUrl('');
+      setShowSlip(false);
+      alert("ไม่พบสลิปสำหรับรายการนี้");
+    }
+  };
+
+  // อนุมัติ
+  const handleApprove = async (booking_id) => {
+  if (!window.confirm('อนุมัติการจองนี้?')) return;
+  setActionLoading('approve_' + booking_id);
+  try {
+    await bookingService.approveBooking(booking_id); // ← ใช้ service ตามนี้
+    fetchBookings();
+  } catch (err) {
+    alert(err.response?.data?.message || "เกิดข้อผิดพลาด");
+  } finally {
+    setActionLoading(null);
+  }
+};
+
+  // ยืนยันสลิป
+  const handleVerify = async (booking_id) => {
+    if (!window.confirm('ยืนยันว่าชำระเงินถูกต้อง?')) return;
+    setActionLoading('verify_' + booking_id);
+    try {
+      await paymentService.verifyPayment(booking_id);
       fetchBookings();
+      setShowSlip(false);
     } catch (err) {
-      alert(err.response?.data?.message || 'เกิดข้อผิดพลาด');
-    } finally { setActionLoading(null); }
+      alert(err.response?.data?.message || "เกิดข้อผิดพลาด");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // ปฏิเสธสลิป
+  const handleReject = async (booking_id) => {
+    const reason = window.prompt('เห���ุผลในการปฏิเสธ (เช่น สลิปไม่ถูกต้อง):');
+    if (reason === null) return;
+    setActionLoading('reject_' + booking_id);
+    try {
+      await paymentService.rejectPayment(booking_id, { reason });
+      fetchBookings();
+      setShowSlip(false);
+    } catch (err) {
+      alert(err.response?.data?.message || "เกิดข้อผิดพลาด");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const filtered = activeTab === 'all' ? bookings : bookings.filter(b => b.status === activeTab);
   const countByTab = (key) => key === 'all' ? bookings.length : bookings.filter(b => b.status === key).length;
+  const fmtDate = (d) => new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
 
   return (
     <div style={{ minHeight: '100vh', background: '#F9FAFB' }}>
@@ -66,7 +117,7 @@ const ShopBookingsPage = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
             <div style={{ width: 44, height: 44, background: '#FFF7ED', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, border: '1px solid #FED7AA' }}>🗂️</div>
             <div>
-              <h1 style={{ fontSize: 20, fontWeight: 700, color: '#111827', margin: 0 }}>จัดการการจอง</h1>
+              <h1 style={{ fontSize: 20, fontWeight: 700, color: '#111827', margin: 0 }}>จ���ดการการจอง</h1>
               <p style={{ fontSize: 13, color: '#9CA3AF', margin: 0 }}>{bookings.length} รายการทั้งหมด</p>
             </div>
           </div>
@@ -76,9 +127,16 @@ const ShopBookingsPage = () => {
               const count = countByTab(t.key);
               const active = activeTab === t.key;
               return (
-                <button key={t.key} onClick={() => setActiveTab(t.key)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', transition: 'all 0.15s', background: active ? '#F97316' : '#F3F4F6', color: active ? '#fff' : '#6B7280', boxShadow: active ? '0 2px 8px rgba(249,115,22,0.3)' : 'none' }}>
+                <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
+                  border: 'none', cursor: 'pointer', transition: 'all 0.15s', background: active ? '#F97316' : '#F3F4F6', color: active ? '#fff' : '#6B7280',
+                  boxShadow: active ? '0 2px 8px rgba(249,115,22,0.3)' : 'none'
+                }}>
                   {t.label}
-                  {count > 0 && <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 999, fontWeight: 700, background: active ? 'rgba(255,255,255,0.25)' : '#E5E7EB', color: active ? '#fff' : '#6B7280' }}>{count}</span>}
+                  {count > 0 && <span style={{
+                    fontSize: 11, padding: '1px 7px', borderRadius: 999, fontWeight: 700,
+                    background: active ? 'rgba(255,255,255,0.25)' : '#E5E7EB', color: active ? '#fff' : '#6B7280',
+                  }}>{count}</span>}
                 </button>
               );
             })}
@@ -110,7 +168,6 @@ const ShopBookingsPage = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {filtered.map(b => {
               const s = statusConfig[b.status] || statusConfig.cancelled;
-              const fmtDate = (d) => new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
               const days = Math.max(1, Math.ceil((new Date(b.end_date) - new Date(b.start_date)) / 86400000));
               return (
                 <div key={b.booking_id} style={{ background: '#fff', borderRadius: 16, border: '1px solid #F3F4F6', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
@@ -131,28 +188,43 @@ const ShopBookingsPage = () => {
                       </div>
                     </div>
 
-                                        {/* 3️⃣ Action Buttons — เปลี่ยน confirmed → approved */}
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      {b.status === 'pending' && <>
-                        <button onClick={() => handleAction('approve', b.booking_id)} disabled={!!actionLoading} style={{ flex: 1, background: '#F0FDF4', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 10, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: actionLoading ? 0.6 : 1 }}>
-                          {actionLoading === b.booking_id + 'approve' ? '...' : '✓ อนุมัติ'}
+                    {/* ปุ่มอนุมัติ */}
+                    {b.status === 'pending' && (
+                      <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => handleApprove(b.booking_id)}
+                          disabled={actionLoading && actionLoading === 'approve_' + b.booking_id}
+                          style={{
+                            background: '#DBEAFE',
+                            color: '#1E40AF',
+                            border: '1px solid #93C5FD',
+                            borderRadius: 10,
+                            padding: '8px 12px',
+                            fontWeight: 600,
+                            fontSize: 13,
+                            cursor: 'pointer',
+                            opacity: actionLoading === 'approve_' + b.booking_id ? 0.6 : 1
+                          }}
+                        >
+                          {actionLoading === 'approve_' + b.booking_id ? '...' : '✅ อนุมัติ'}
                         </button>
-                        <button onClick={() => handleAction('reject', b.booking_id)} disabled={!!actionLoading} style={{ flex: 1, background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', borderRadius: 10, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: actionLoading ? 0.6 : 1 }}>
-                          {actionLoading === b.booking_id + 'reject' ? '...' : '✕ ปฏิเสธ'}
+                      </div>
+                    )}
+
+                    {/* ปุ่มสลิป */}
+                    {b.status === 'waiting_verification' && (
+                      <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <button onClick={() => handleShowSlip(b.booking_id)} style={{ background: '#DBEAFE', color: '#1E40AF', border: '1px solid #93C5FD', borderRadius: 10, padding: '8px 12px', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                          👁 ดูสลิป
                         </button>
-                      </>}
-                      {/* ← เปลี่ยน confirmed → approved */}
-                      {b.status === 'approved' && (
-                        <button onClick={() => handleAction('pickup', b.booking_id)} disabled={!!actionLoading} style={{ background: '#EDE9FE', color: '#6B21A8', border: '1px solid #C084FC', borderRadius: 10, padding: '9px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: actionLoading ? 0.6 : 1 }}>
-                          {actionLoading === b.booking_id + 'pickup' ? '...' : '📦 ลูกค้ารับของแล้ว'}
+                        <button onClick={() => handleVerify(b.booking_id)} disabled={actionLoading && actionLoading === 'verify_'+b.booking_id} style={{ background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 10, padding: '8px 12px', fontWeight: 600, fontSize: 13, cursor: 'pointer', opacity: actionLoading === 'verify_'+b.booking_id ? 0.6 : 1 }}>
+                          {actionLoading === 'verify_'+b.booking_id ? '...' : '✅ ยืนยันชำระเงิน'}
                         </button>
-                      )}
-                      {b.status === 'picked_up' && (
-                        <button onClick={() => handleAction('return', b.booking_id)} disabled={!!actionLoading} style={{ background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 10, padding: '9px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: actionLoading ? 0.6 : 1 }}>
-                          {actionLoading === b.booking_id + 'return' ? '...' : '✅ รับคืนสินค้าแล้ว'}
+                        <button onClick={() => handleReject(b.booking_id)} disabled={actionLoading && actionLoading === 'reject_'+b.booking_id} style={{ background: '#FEE2E2', color: '#DC2626', border: '1px solid #FCA5A5', borderRadius: 10, padding: '8px 12px', fontWeight: 600, fontSize: 13, cursor: 'pointer', opacity: actionLoading === 'reject_'+b.booking_id ? 0.6 : 1 }}>
+                          {actionLoading === 'reject_'+b.booking_id ? '...' : '✕ ปฏิเสธสลิป'}
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -160,6 +232,39 @@ const ShopBookingsPage = () => {
           </div>
         )}
       </div>
+
+      {/* Slip Modal */}
+      {showSlip && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: 24, maxWidth: 400, minHeight: 200,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative'
+          }}>
+            <button onClick={() => setShowSlip(false)} style={{ position: 'absolute', top: 10, right: 14, background: 'none', border: 'none', fontSize: 18, color: '#888', cursor: 'pointer' }}>✕</button>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#111827' }}>สลิปการชำระเงิน</h3>
+            {slipUrl ? (
+  <img
+    src={`http://localhost:3000/uploads/${slipUrl}`}
+    alt="slip"
+    style={{ width: '100%', maxWidth: 330, maxHeight: 350, objectFit: 'contain', marginTop: 12, borderRadius: 12, border: '1px solid #eee' }}
+  />
+) : (
+  <p style={{ marginTop: 30, color: '#B91C1C' }}>ไม่พบสลิป</p>
+)}
+            <div style={{ marginTop: 20, display: 'flex', gap: 8 }}>
+              <button onClick={() => handleVerify(selectedBooking)} disabled={actionLoading === 'verify_' + selectedBooking} style={{ background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 10, padding: '8px 16px', fontWeight: 600, fontSize: 13, cursor: 'pointer', opacity: actionLoading === 'verify_' + selectedBooking ? 0.6 : 1 }}>
+                {actionLoading === 'verify_' + selectedBooking ? '...' : '✅ ยืนยันชำระเงิน'}
+              </button>
+              <button onClick={() => handleReject(selectedBooking)} disabled={actionLoading === 'reject_' + selectedBooking} style={{ background: '#FEE2E2', color: '#DC2626', border: '1px solid #FCA5A5', borderRadius: 10, padding: '8px 16px', fontWeight: 600, fontSize: 13, cursor: 'pointer', opacity: actionLoading === 'reject_' + selectedBooking ? 0.6 : 1 }}>
+                {actionLoading === 'reject_' + selectedBooking ? '...' : '✕ ปฏิเสธสลิป'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

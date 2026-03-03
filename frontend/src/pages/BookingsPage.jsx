@@ -1,28 +1,27 @@
-// บรรทัด 1 — เพิ่ม useNavigate
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom'; // ← เพิ่มบรรทัดนี้
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { bookingService } from '../api/bookingService';
 
 const statusConfig = {
-  pending:   { text: 'รอดำเนินการ', bg: '#FEF9C3', color: '#854D0E', border: '#FDE047' },
-  confirmed: { text: 'อนุมัติแล้ว', bg: '#DBEAFE', color: '#1E40AF', border: '#93C5FD' },
-  picked_up: { text: 'รับของแล้ว',  bg: '#F3E8FF', color: '#6B21A8', border: '#C084FC' },
-  completed: { text: 'เสร็จสิ้น',   bg: '#DCFCE7', color: '#15803D', border: '#86EFAC' },
-  cancelled: { text: 'ยกเลิกแล้ว', bg: '#F3F4F6', color: '#6B7280', border: '#D1D5DB' },
-  rejected:  { text: 'ถูกปฏิเสธ',  bg: '#FEE2E2', color: '#DC2626', border: '#FCA5A5' },
+  pending:   { text: 'รอดำเนินการ',   bg: '#FEF9C3', color: '#854D0E', border: '#FDE047' },
+  approved:  { text: 'อนุมัติแล้ว',    bg: '#DBEAFE', color: '#1E40AF', border: '#93C5FD' },
+  waiting_verification: { text: 'รอตรวจสอบสลิป', bg: '#FFEFC7', color: '#B45309', border: '#FBBF24' },
+  picked_up: { text: 'รับของแล้ว',     bg: '#F3E8FF', color: '#6B21A8', border: '#C084FC' },
+  completed: { text: 'เสร็จสิ้น',      bg: '#DCFCE7', color: '#15803D', border: '#86EFAC' },
+  cancelled: { text: 'ยกเลิกแล้ว',     bg: '#F3F4F6', color: '#6B7280', border: '#D1D5DB' },
+  rejected:  { text: 'ถูกปฏิเสธ',      bg: '#FEE2E2', color: '#DC2626', border: '#FCA5A5' }
 };
-
 const tabs = [
-  { key: 'all',       label: 'ทั้งหมด' },
-  { key: 'pending',   label: 'รอดำเนินการ' },
-  { key: 'confirmed', label: 'อนุมัติแล้ว' },
-  { key: 'completed', label: 'เสร็จสิ้น' },
-  { key: 'cancelled', label: 'ยกเลิก' },
+  { key: 'all',      label: 'ทั้งหมด' },
+  { key: 'pending',  label: 'รอดำเนินการ' },
+  { key: 'approved', label: 'อนุมัติแล้ว' },
+  { key: 'completed',label: 'เสร็จสิ้น' },
+  { key: 'cancelled',label: 'ยกเลิก' },
 ];
 
 const BookingsPage = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
   const [bookings, setBookings]     = useState([]);
   const [loading, setLoading]       = useState(true);
   const [cancelling, setCancelling] = useState(null);
@@ -43,7 +42,7 @@ const BookingsPage = () => {
   useEffect(() => { fetchBookings(); }, [fetchBookings]);
 
   const handleCancel = async (id) => {
-    if (!confirm('ต้องการยกเลิกการจองนี้?')) return;
+    if (!confirm('ต้องการยกเลิ���การจองนี้?')) return;
     setCancelling(id);
     try {
       await bookingService.cancelBooking(id);
@@ -226,20 +225,24 @@ const BookingsPage = () => {
                         </button>
                       </div>
                     )}
+
+                    {/* Payment button shows only after approved */}
+                    {b.status === 'approved' && (
+                      <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => navigate(`/payment/${b.booking_id}`)}
+                          style={{
+                            fontSize: 13, color: '#fff', background: '#F97316',
+                            border: 'none', padding: '7px 16px',
+                            borderRadius: 10, cursor: 'pointer', fontWeight: 600,
+                          }}
+                        >
+                          💸 ชำระเงิน
+                        </button>
+                      </div>
+                    )}
+                    
                   </div>
-                  {/* เพิ่มปุ่ม ชำระเงิน เมื่อ confirmed */}
-{b.status === 'confirmed' && (
-  <button
-    onClick={() => navigate(`/payment/${b.booking_id}`)}
-    style={{
-      fontSize: 13, color: '#fff', background: '#F97316',
-      border: 'none', padding: '7px 16px',
-      borderRadius: 10, cursor: 'pointer', fontWeight: 600,
-    }}
-  >
-    💸 ชำระเงิน
-  </button>
-)}
                 </div>
               );
             })}

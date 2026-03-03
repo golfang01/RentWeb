@@ -10,6 +10,13 @@ const { testConnection } = require('./config/database');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+
+// ⭐️ Serve static slip images
+// ใหม่ (ถูกต้อง และควรใช้กับ path uploads/slips)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// ... ที่เหลือเหมือนเดิม
+
 // Middlewares
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:5173',

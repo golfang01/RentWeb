@@ -4,7 +4,8 @@ class BookingController {
 
   // Helper: ดึง booking status ล่าสุด
   async getBookingStatus(booking_id) {
-    const res = await pool.query('SELECT status FROM bookings WHERE booking_id = $1', [booking_id]);
+    const res = await pool.query(
+      'SELECT status FROM bookings WHERE booking_id = $1', [booking_id]);
     if (!res.rows.length) return null;
     return res.rows[0].status;
   }
@@ -103,24 +104,29 @@ class BookingController {
 
   // ✅ อนุมัติการจอง
   async approveBooking(req, res) {
+    const { id } = req.params;
+    const shop_id = req.shop?.shop_id;
+    const user = req.user;
+
+    console.log('[approveBooking] เริ่ม', { booking_id: id, shop_id, user });
+
     try {
-      const { id } = req.params;
-      const shop_id = req.shop?.shop_id;
-      // ตรวจสอบสถานะก่อน
-      const status = await this.getBookingStatus(id);
-      if (!status) return res.status(404).json({ success: false, message: 'ไม่พบการจอง' });
-      if (status !== 'pending') {
-        return res.status(400).json({ success: false, message: `อนุมัติได้เฉพาะสถานะ pending` });
+      // ตรวจสอบว่า booking นี้เป็นของร้านนี้จริงหรือเปล่า
+     const checkRes = await pool.query('SELECT * FROM bookings WHERE booking_id = $1 AND shop_id = $2', [id, shop_id]);
+      if (!checkRes.rows.length) {
+        console.log('[approveBooking] ไม่พบ booking ที่ร้านนี้');
+        return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์แก้ไข' });
       }
-      const result = await pool.query(
-        `UPDATE bookings SET status = 'approved' WHERE booking_id = $1 AND shop_id = $2 RETURNING *`,
-        [id, shop_id]
-      );
-      if (!result.rows.length)
-        return res.status(404).json({ success: false, message: 'ไม่พบการจอง' });
-      res.json({ success: true, message: 'อนุมัติการจองสำเร็จ', data: result.rows[0] });
+
+      // อัปเดตสถานะ booking เป็น approved
+      await pool.query('UPDATE bookings SET status = $1 WHERE booking_id = $2', ['approved', id]);
+
+      console.log('[approveBooking] อนุมัติ booking สำเร็จ');
+      return res.json({ success: true, message: 'อนุมัติแล้ว' });
+
     } catch (error) {
-      res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด', error: error.message });
+      console.log('[approveBooking] error:', error);
+      return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด', error: error.message });
     }
   }
 

@@ -1,8 +1,16 @@
 const multer = require('multer');
 const path = require('path');
 
-// เก็บไว้ใน memory (สำหรับส่งต่อไป Cloudinary หรือ S3)
-const storage = multer.memoryStorage();
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/slips'); // ต้องมีโฟลเดอร์นี้
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const uniqueName = Date.now() + ext; // เช่น 1710039200000.jpg
+    cb(null, uniqueName);
+  }
+});
 
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|webp/;
