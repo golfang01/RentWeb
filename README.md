@@ -13,7 +13,7 @@
 ### 1. Manual Test Cases (Test Design & Execution)
 มีการออกแบบ Test Case เพื่อครอบคลุมการทำงานหลัก (Happy Path), การตรวจสอบความถูกต้องของข้อมูล (Negative/Validation), และกรณีการใช้งานที่ซับซ้อน (Edge Cases)
 
-* 🔗 **[ดูเอกสาร Test Case ฉบับเต็มได้ที่นี่ (Google Sheets)]** *(<- นำลิงก์ Sheet ของคุณมาแปะตรงนี้)*
+* 🔗 **[ดูเอกสาร Test Case ฉบับเต็มได้ที่นี่ (Google Sheets)]** *(https://docs.google.com/spreadsheets/d/1FwKxyuA_PvCbafsbN_n3bVKhVTvN0wdrACsJjF40L_g/edit?usp=sharing)*
 
 **ไฮไลต์การทดสอบ:**
 * **Date Validation:** ทดสอบลอจิกการคำนวณวันเช่า ป้องกันการเลือกวันสิ้นสุดก่อนวันเริ่มต้น
